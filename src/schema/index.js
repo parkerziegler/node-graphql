@@ -14,6 +14,10 @@ const typeDefs = `
     type Query {
         allLinks: [Link!]!
     }
+
+    type Mutation {
+        createLink(url: String!, description: String!): Link
+    }
 `;
 
 // generate the graphql schema object from the typeDefs object
