@@ -15,6 +15,9 @@ const schema = require('./schema');
 // require our db connection
 const connectMongo = require('./mongo-connector');
 
+// also load our authentication module
+const { authenticate } = require('./authenticate');
+
 // function to call when starting the server
 const start = async () => {
 
@@ -24,13 +27,25 @@ const start = async () => {
     // context is a graphQL object that gets passed to all resolvers,
     // good place to store db credentials, tokens, etc.
     var app = express();
-    app.use('/graphql', bodyParser.json(), graphqlExpress({ 
-        context: { mongo },
-        schema
-    }));
+
+    // define a build options "middleware" to authenticate each
+    // request from the user
+    const buildOptions = async (req, res) => {
+        const user = await authenticate(req, mongo.Users);
+
+        // store the user in graphQL context object
+        return {
+            context: { mongo, user },
+            schema
+        };
+    };
+
+    // pass the buildOptions into our graphQL server
+    app.use('/graphql', bodyParser.json(), graphqlExpress(buildOptions));
     
     app.use('/graphiql', graphiqlExpress({
-        endpointURL: '/graphql'
+        endpointURL: '/graphql',
+        passHeader: `'Authorization': 'bearer token-bess@test.com'`
     }));
     
     const PORT = 3000;
