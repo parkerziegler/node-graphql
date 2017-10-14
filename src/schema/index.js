@@ -1,6 +1,8 @@
 // makeExecutableSchema accepts a string in the schema
 // definition language and returns a complete GraphQLSchema 
 const { makeExecutableSchema } = require('graphql-tools');
+
+// load our resolvers for our queries and mutations
 const resolvers = require('./resolvers');
 
 // define types for the graphql schema
@@ -9,6 +11,7 @@ const typeDefs = `
         id: ID!
         url: String!
         description: String!
+        postedBy: User
     }
 
     type User {
@@ -26,13 +29,19 @@ const typeDefs = `
         password: String!
     }
 
+    type SigninPayload {
+        token: String,
+        user: User
+    }
+
     type Query {
         allLinks: [Link!]!
     }
 
     type Mutation {
         createLink(url: String!, description: String!): Link
-        createUser(name: String!, authProvider: AuthProviderSignupData!) : User
+        createUser(name: String!, authProvider: AuthProviderSignupData!): User
+        signinUser(email: AUTH_PROVIDER_EMAIL): SigninPayload!
     }
 `;
 
