@@ -20,9 +20,17 @@ const links = [
     Mutation: {
 
       // our createLink resolver
-      createLink: async (root, data, { mongo: { Links }}) => {
-        const response = await Links.insert(data);
-        return Object.assign({ id: response.insertedIds[0] }, data);
+      createLink: async (root, data, { mongo: { Links }, user}) => {
+        // copy over the data sent in the resolver along with
+        // the user who posted it
+        const newLink = Object.assign({postedById: user && user._id}, data);
+
+        // insert into our MongoDB databasse
+        const response = await Links.insert(newLink);
+
+        // return the id of the newly created link
+        // in addition to the newLink object
+        return Object.assign({ id: response.insertedIds[0] }, newLink);
       },
 
       // our createUser resolver
@@ -39,10 +47,33 @@ const links = [
         const response = await Users.insert(newUser);
 
         // return the new user with the generated id
-        return Object.assign({id: response.insertedIds[0]}, newUser);
+        return Object.assign({ id: response.insertedIds[0] }, newUser);
+      },
+
+      // our signin user resolver - take a look at the Users collection
+      // in the database - data is our auth credentials
+      signinUser: async (root, data, { mongo: { Users }}) => {
+        
+        // find the matching user
+        const user = await Users.findOne({ email: data.email.email });
+  
+        // check that the password matches
+        if (data.email.password === user.password) {
+          // if so, return a token
+          return { token: `token-${user.email}`, user };
+        }
       }
     },
     Link: {
+      // Convert the "_id" field from MongoDB to "id" from the schema.
       id: root => root._id || root.id,
+
+      postedBy: async ({ postedById }, data, {mongo: { Users }}) => {
+        return await Users.findOne({ _id: postedById });
+      }
     },
+    User: {
+      // Convert the "_id" field from MongoDB to "id" from the schema.
+      id: root => root._id || root.id
+    }
   };
