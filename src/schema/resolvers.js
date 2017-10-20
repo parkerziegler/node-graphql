@@ -1,15 +1,4 @@
-const links = [
-    {
-      id: 1,
-      url: 'http://graphql.org/',
-      description: 'The Best Query Language'
-    },
-    {
-      id: 2,
-      url: 'http://dev.apollodata.com',
-      description: 'Awesome GraphQL Client'
-    },
-  ];
+const { ObjectID } = require('mongodb');
   
   module.exports = {
     Query: {
@@ -31,6 +20,22 @@ const links = [
         // return the id of the newly created link
         // in addition to the newLink object
         return Object.assign({ id: response.insertedIds[0] }, newLink);
+      },
+
+      // our createVote resolver
+      createVote: async (root, data, { mongo: { Votes }, user}) => {
+
+        // compose the newVote object
+        const newVote = {
+          userId: user && user._id,
+          linkId: new ObjectID(data.linkId)
+        };
+
+        // insert it into mongo's votes collection
+        const response = await Votes.insert(newVote);
+
+        // return the id of the cast vote and it's contents
+        return Object.assign({ id: response.insertedIds[0] }, newVote);
       },
 
       // our createUser resolver
@@ -70,10 +75,31 @@ const links = [
 
       postedBy: async ({ postedById }, data, {mongo: { Users }}) => {
         return await Users.findOne({ _id: postedById });
+      },
+
+      votes: async ({ _id }, data, { mongo: Votes }) => {
+        return await Votes.find({ linkId: _id }).toArray();
       }
     },
     User: {
       // Convert the "_id" field from MongoDB to "id" from the schema.
-      id: root => root._id || root.id
+      id: root => root._id || root.id,
+
+      votes: async({ _id }, data, { mongo: Votes }) => {
+        return await Votes.find({ userId: _id }).toArray();
+      }
+    },
+    Vote: {
+      id: root => root._id || root.id,
+
+      // fetch the user data from mongo
+      user: async ({ userId }, data, { mongo: { Users }}) => {
+        return await Users.findOne({ _id: userId });
+      },
+
+      // fetch the link data from mongo
+      link: async ({ linkId }, data, { mongo: { Links }}) => {
+        return await Links.findOne({ _id: linkId });
+      }
     }
   };
