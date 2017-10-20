@@ -9,9 +9,10 @@ const MONGO_URL = 'mongodb://localhost:27017/hackernews';
 module.exports = async () => {
     const db = await MongoClient.connect(MONGO_URL);
 
-    // return the mongodb collections for links and users
+    // return the mongodb collections for links, users, votes
     return {
         Links: db.collection('links'),
-        Users: db.collection('users')
+        Users: db.collection('users'),
+        Votes: db.collection('votes')
     };
 }
