@@ -18,6 +18,9 @@ const connectMongo = require('./mongo-connector');
 // also load our authentication module
 const { authenticate } = require('./authenticate');
 
+// require our data loader
+const buildDataloaders = require('./dataloaders');
+
 // function to call when starting the server
 const start = async () => {
 
@@ -33,9 +36,13 @@ const start = async () => {
     const buildOptions = async (req, res) => {
         const user = await authenticate(req, mongo.Users);
 
-        // store the user in graphQL context object
+        // store the user in GraphQL context object
         return {
-            context: { mongo, user },
+            context: {
+                dataloaders: buildDataloaders(mongo),
+                mongo,
+                user
+            },
             schema
         };
     };
