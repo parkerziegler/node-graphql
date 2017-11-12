@@ -73,11 +73,11 @@ const { ObjectID } = require('mongodb');
       // Convert the "_id" field from MongoDB to "id" from the schema.
       id: root => root._id || root.id,
 
-      postedBy: async ({ postedById }, data, {mongo: { Users }}) => {
-        return await Users.findOne({ _id: postedById });
+      postedBy: async ({ postedById }, data, {dataloaders: {userLoader}}) => {
+        return await userLoader.load(postedById);
       },
 
-      votes: async ({ _id }, data, { mongo: Votes }) => {
+      votes: async ({ _id }, data, { mongo: { Votes }}) => {
         return await Votes.find({ linkId: _id }).toArray();
       }
     },
@@ -93,8 +93,8 @@ const { ObjectID } = require('mongodb');
       id: root => root._id || root.id,
 
       // fetch the user data from mongo
-      user: async ({ userId }, data, { mongo: { Users }}) => {
-        return await Users.findOne({ _id: userId });
+      user: async ({ userId }, data, { dataloaders: { userLoader }}) => {
+        return await userLoader.load(userId);
       },
 
       // fetch the link data from mongo
