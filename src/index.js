@@ -21,6 +21,9 @@ const { authenticate } = require('./authenticate');
 // require our data loader
 const buildDataloaders = require('./dataloaders');
 
+// require our formatError function
+const formatError = require('./formatError');
+
 // function to call when starting the server
 const start = async () => {
 
@@ -43,6 +46,7 @@ const start = async () => {
                 mongo,
                 user
             },
+            formatError,
             schema
         };
     };
