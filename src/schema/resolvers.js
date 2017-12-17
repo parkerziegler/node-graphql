@@ -1,5 +1,6 @@
 const { ObjectID } = require('mongodb');
 const { URL } = require('url');
+const pubsub = require ('../pubsub');
 
 // class for providing more specific error messages
 class ValidationError extends Error {
@@ -18,10 +19,41 @@ function assertValidLink({ url }) {
   }
 }
 
+function buildFilters({ OR = [], description_contains, url_contains }) {
+
+  const filter = (description_contains || url_contains) ? {} : null;
+
+  if (description_contains) {
+    filter.description = { $regex: `.*${description_contains}.*` };
+  }
+
+  if (url_contains) {
+    filter.url_contains = { $regex: `.*${url_contains}.*`};
+  }
+
+  let filters = filter ? [filter] : [];
+  for (let i = 0; i < OR.length; i++) {
+    filters = filters.concat(buildFilters(OR[i]));
+  }
+
+  return filters;
+}
+
 module.exports = {
   Query: {
-    allLinks: async (root, data, { mongo: { Links }}) => {
-      return await Links.find({}).toArray();
+    allLinks: async (root, { filter, first, skip }, { mongo: { Links }}) => {
+      let query = filter ? { $or: buildFilters(filter)} : {};
+
+      const cursor = await Links.find(query);
+
+      if (first) {
+        cursor.limit(first);
+      }
+
+      if (skip) {
+        cursor.skip(skip);
+      }
+      return cursor.toArray();
     },
   },
   Mutation: {
@@ -36,12 +68,16 @@ module.exports = {
       // the user who posted it
       const newLink = Object.assign({postedById: user && user._id}, data);
 
-      // insert into our MongoDB databasse
+      // insert into our MongoDB database
       const response = await Links.insert(newLink);
 
-      // return the id of the newly created link
-      // in addition to the newLink object
-      return Object.assign({ id: response.insertedIds[0] }, newLink);
+      /* send out a pubsub notification to alert interested clients that
+      a new link was created */
+      newLink.id = response.insertedIds[0];
+      pubsub.publish('Link', { Link: { mutation: 'CREATED', node: newLink }});
+
+      // return the newLink object
+      return newLink;
     },
 
     // our createVote resolver
@@ -89,6 +125,11 @@ module.exports = {
         // if so, return a token
         return { token: `token-${user.email}`, user };
       }
+    }
+  },
+  Subscription: {
+    Link: {
+      subscribe: () => pubsub.asyncIterator('Link')
     }
   },
   Link: {
