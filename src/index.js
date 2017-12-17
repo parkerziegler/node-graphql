@@ -24,6 +24,11 @@ const buildDataloaders = require('./dataloaders');
 // require our formatError function
 const formatError = require('./formatError');
 
+// require packages to work with subscriptions
+const { execute, subscribe } = require('graphql');
+const { createServer } = require('http');
+const { SubscriptionServer } = require('subscriptions-transport-ws');
+
 // function to call when starting the server
 const start = async () => {
 
@@ -51,16 +56,24 @@ const start = async () => {
         };
     };
 
+    const PORT = 3000;
+    
     // pass the buildOptions into our graphQL server
     app.use('/graphql', bodyParser.json(), graphqlExpress(buildOptions));
     
     app.use('/graphiql', graphiqlExpress({
         endpointURL: '/graphql',
-        passHeader: `'Authorization': 'bearer token-bess@test.com'`
+        passHeader: `'Authorization': 'bearer token-bess@test.com'`,
+        subscriptionsEndpoint: `ws://localhost:${PORT}/subscriptions`
     }));
-    
-    const PORT = 3000;
-    app.listen(PORT, () => {
+
+    // set up the websocket server
+    const server = createServer(app);
+    server.listen(PORT, () => {
+        SubscriptionServer.create(
+            { execute, subscribe, schema },
+            { server, path: '/subscriptions' }
+        );
         console.log(`Hackernews GraphQL server running on port ${PORT}.`);
     });
 };
